@@ -1,0 +1,133 @@
+/* Estilos generales */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Alinea al inicio para asegurar que el contenido largo sea visible */
+    overflow: auto; /* Asegura que el contenido que se sale de la pantalla sea accesible */
+}
+
+/* Contenedor principal */
+.main-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 1200px;
+    text-align: center;
+    overflow: auto; 
+    margin-top: 50px;
+ 
+}
+
+/* Encabezados */
+.main-container h1, .main-container h2 {
+    color: #333;
+}
+
+.main-container h1 {
+    margin-bottom: 20px;
+}
+
+/* Estilos para mensajes */
+.error {
+    color: red;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.success {
+    color: green;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+/* Botones */
+.btn {
+    padding: 10px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+
+.logout-btn {
+    background-color: #dc3545;
+}
+
+.logout-btn:hover {
+    background-color: #c82333;
+}
+
+/* Estilos específicos para el formulario */
+.user-form .form-group {
+    margin-bottom: 15px;
+}
+
+.user-form .form-input {
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.user-form .form-actions {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Estilos específicos para las secciones */
+.section {
+    margin-top: 20px;
+}
+
+/* Estilos para las tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+/* Media queries para dispositivos móviles */
+@media (max-width: 600px) {
+    .main-container {
+        width: 100%;
+        padding: 10px;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .user-form .form-input {
+        width: calc(100% - 10px);
+    }
+}

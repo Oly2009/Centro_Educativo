@@ -1,0 +1,18 @@
+SMAP
+borrarIncidencia_jsp.java
+JSP
+*S JSP
+*F
++ 0 borrarIncidencia.jsp
+borrarIncidencia.jsp
+*L
+1,25:57
+25:111,11
+26:122
+26:151,11
+27:162
+28,7:163,3
+35,2:184
+36,2:125
+37,10:84
+*E
