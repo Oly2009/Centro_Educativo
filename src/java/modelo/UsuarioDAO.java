@@ -23,6 +23,7 @@ public void registrarUsuario(String nombre, String apellidos, String email, Stri
     Connection conn = null;
     PreparedStatement stmtInsertUsuario = null;
     PreparedStatement stmtInsertUsuarioRol = null;
+    PreparedStatement stmtSelectUsuario = null;
     PreparedStatement stmtSelectRol = null;
     ResultSet resultSet = null;
 
@@ -30,24 +31,39 @@ public void registrarUsuario(String nombre, String apellidos, String email, Stri
         conn = conexionBD.getConnection();
         conn.setAutoCommit(false);
 
-        // Cifrar la contraseña antes de guardarla
-        String hashedPassword = hashPassword(password);
+        // Verificar si el usuario ya existe
+        String sqlSelectUsuario = "SELECT id_usuario, password FROM usuarios WHERE email = ?";
+        stmtSelectUsuario = conn.prepareStatement(sqlSelectUsuario);
+        stmtSelectUsuario.setString(1, email);
+        resultSet = stmtSelectUsuario.executeQuery();
 
-        String sqlInsertUsuario = "INSERT INTO usuarios (nombre, apellidos, password, email) VALUES (?, ?, ?, ?)";
-        stmtInsertUsuario = conn.prepareStatement(sqlInsertUsuario, Statement.RETURN_GENERATED_KEYS);
-        stmtInsertUsuario.setString(1, nombre);
-        stmtInsertUsuario.setString(2, apellidos);
-        stmtInsertUsuario.setString(3, hashedPassword);
-        stmtInsertUsuario.setString(4, email);
-        stmtInsertUsuario.executeUpdate();
-
-        // Obtener el ID del usuario 
         int idUsuario;
-        try (ResultSet generatedKeys = stmtInsertUsuario.getGeneratedKeys()) {
-            if (generatedKeys.next()) {
-                idUsuario = generatedKeys.getInt(1);
-            } else {
-                throw new SQLException("No se pudo obtener el ID del usuario insertado.");
+        boolean usuarioExistente = false;
+        if (resultSet.next()) {
+            idUsuario = resultSet.getInt("id_usuario");
+            usuarioExistente = true;
+            // Si el usuario ya existe, verificar la contraseña
+            String existingHashedPassword = resultSet.getString("password");
+            if (!verifyPassword(password, existingHashedPassword)) {
+                throw new SQLException("La contraseña no coincide para el usuario existente.");
+            }
+        } else {
+            // Si el usuario no existe, crearlo
+            String hashedPassword = hashPassword(password);
+            String sqlInsertUsuario = "INSERT INTO usuarios (nombre, apellidos, password, email) VALUES (?, ?, ?, ?)";
+            stmtInsertUsuario = conn.prepareStatement(sqlInsertUsuario, Statement.RETURN_GENERATED_KEYS);
+            stmtInsertUsuario.setString(1, nombre);
+            stmtInsertUsuario.setString(2, apellidos);
+            stmtInsertUsuario.setString(3, hashedPassword);
+            stmtInsertUsuario.setString(4, email);
+            stmtInsertUsuario.executeUpdate();
+
+            try (ResultSet generatedKeys = stmtInsertUsuario.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    idUsuario = generatedKeys.getInt(1);
+                } else {
+                    throw new SQLException("No se pudo obtener el ID del usuario insertado.");
+                }
             }
         }
 
@@ -65,7 +81,6 @@ public void registrarUsuario(String nombre, String apellidos, String email, Stri
                 resultSet.next();
                 int count = resultSet.getInt("count");
                 if (count == 0) {
-                    
                     // Inserta el rol solo si el usuario no lo tiene
                     stmtInsertUsuarioRol.setInt(1, idUsuario);
                     stmtInsertUsuarioRol.setString(2, rol);
@@ -73,7 +88,6 @@ public void registrarUsuario(String nombre, String apellidos, String email, Stri
                 } else {
                     System.out.println("El usuario ya tiene el rol '" + rol + "'. No se insertará nuevamente.");
                 }
-                
                 resultSet.close();
                 stmtSelectRol.close();
             }
@@ -88,6 +102,9 @@ public void registrarUsuario(String nombre, String apellidos, String email, Stri
         throw new SQLException("Error al registrar el usuario: " + e.getMessage(), e);
     } finally {
         // Cerrar recursos en el bloque finally
+        if (stmtSelectUsuario != null) {
+            stmtSelectUsuario.close();
+        }
         if (stmtInsertUsuarioRol != null) {
             stmtInsertUsuarioRol.close();
         }
@@ -99,6 +116,7 @@ public void registrarUsuario(String nombre, String apellidos, String email, Stri
         }
     }
 }
+
 public boolean existeUsuarioConRol(String email, String[] roles) throws SQLException {
     Connection conn = null;
     PreparedStatement stmt = null;
@@ -275,37 +293,53 @@ public boolean existeUsuarioConRol(String email, String[] roles) throws SQLExcep
     }
 
     public void darDeBajaUsuario(int idUsuario) {
-        Connection conn = null;
+    Connection conn = null;
+    try {
+        conn = conexionBD.getConnection();
+        conn.setAutoCommit(false);
+
+        // Eliminar incidencias relacionadas con el usuario
+        String sqlDeleteIncidencias = "DELETE FROM incidencias WHERE id_usuario = ?";
+        try (PreparedStatement stmtDeleteIncidencias = conn.prepareStatement(sqlDeleteIncidencias)) {
+            stmtDeleteIncidencias.setInt(1, idUsuario);
+            stmtDeleteIncidencias.executeUpdate();
+        }
+
+        // Eliminar roles del usuario
+        String sqlDeleteUsuarioRol = "DELETE FROM usuarios_rol WHERE id_usuario = ?";
+        try (PreparedStatement stmtDeleteUsuarioRol = conn.prepareStatement(sqlDeleteUsuarioRol)) {
+            stmtDeleteUsuarioRol.setInt(1, idUsuario);
+            stmtDeleteUsuarioRol.executeUpdate();
+        }
+
+        // Finalmente, eliminar el usuario
+        String sqlDeleteUsuario = "DELETE FROM usuarios WHERE id_usuario = ?";
+        try (PreparedStatement stmtDeleteUsuario = conn.prepareStatement(sqlDeleteUsuario)) {
+            stmtDeleteUsuario.setInt(1, idUsuario);
+            stmtDeleteUsuario.executeUpdate();
+        }
+
+        // Confirmar transacción
+        conn.commit();
+    } catch (SQLException e) {
+        e.printStackTrace();
         try {
-            conn = conexionBD.getConnection();
-            conn.setAutoCommit(false);
-
-            String sqlDeleteUsuarioRol = "DELETE FROM usuarios_rol WHERE id_usuario = ?";
-            try (PreparedStatement stmtDeleteUsuarioRol = conn.prepareStatement(sqlDeleteUsuarioRol)) {
-                stmtDeleteUsuarioRol.setInt(1, idUsuario);
-                stmtDeleteUsuarioRol.executeUpdate();
+            if (conn != null) {
+                conn.rollback();
             }
-
-            conn.commit();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    } finally {
+        try {
+            if (conn != null) {
+                conn.close();
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            try {
-                if (conn != null) {
-                    conn.rollback();
-                }
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-            }
-        } finally {
-            try {
-                if (conn != null) {
-                    conn.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
+}
 
     public int obtenerUsuarioIdPorEmail(String email, String rol) throws SQLException {
         Connection con = null;
