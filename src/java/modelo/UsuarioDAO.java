@@ -164,17 +164,7 @@ public boolean existeUsuarioConRol(String email, String[] roles) throws SQLExcep
 
 
  
-    private String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hashedBytes = md.digest(password.getBytes());
-            return Base64.getEncoder().encodeToString(hashedBytes);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            
-            return null;
-        }
-    }
+   
 
  public String iniciarSesion(String email, String password, String rol) {
     try (Connection conn = conexionBD.getConnection()) {
@@ -369,71 +359,98 @@ public boolean existeUsuarioConRol(String email, String[] roles) throws SQLExcep
         }
     }
 
-    public boolean modificarUsuario(int idUsuario, String nombre, String apellidos, String email, String password, String[] roles) throws SQLException {
-        Connection conn = null;
-        PreparedStatement stmtUpdateUsuario = null;
-        PreparedStatement stmtDeleteRolesUsuario = null;
-        PreparedStatement stmtInsertRolesUsuario = null;
-        try {
-            conn = conexionBD.getConnection();
-            conn.setAutoCommit(false);
+  public boolean modificarUsuario(int idUsuario, String nombre, String apellidos, String email, String password, String[] roles) throws SQLException {
+    Connection conn = null;
+    PreparedStatement stmtUpdateUsuario = null;
+    PreparedStatement stmtDeleteRolesUsuario = null;
+    PreparedStatement stmtInsertRolesUsuario = null;
+    try {
+        conn = conexionBD.getConnection();
+        conn.setAutoCommit(false);
 
-           
-            String hashedPassword = hashPassword(password);
+        // Verifica si se proporcionó una nueva contraseña
+        String hashedPassword;
+        if (password == null || password.isEmpty()) {
+            // No se proporcionó nueva contraseña, mantener la actual
+            hashedPassword = null;
+        } else {
+            hashedPassword = hashPassword(password);
+        }
 
-            // Actualiza los datos  del usuario
-            String sqlUpdateUsuario = "UPDATE usuarios SET nombre = ?, apellidos = ?, email = ?, password = ? WHERE id_usuario = ?";
-            stmtUpdateUsuario = conn.prepareStatement(sqlUpdateUsuario);
-            stmtUpdateUsuario.setString(1, nombre);
-            stmtUpdateUsuario.setString(2, apellidos);
-            stmtUpdateUsuario.setString(3, email);
-            stmtUpdateUsuario.setString(4, hashedPassword); // Guardar la contraseña hasheada
-            stmtUpdateUsuario.setInt(5, idUsuario);
-            int rowsUpdated = stmtUpdateUsuario.executeUpdate();
+        // Construye la consulta SQL dinámicamente para actualizar la contraseña solo si se proporcionó una nueva
+        StringBuilder sqlUpdateUsuario = new StringBuilder("UPDATE usuarios SET nombre = ?, apellidos = ?, email = ?");
+        if (hashedPassword != null) {
+            sqlUpdateUsuario.append(", password = ?");
+        }
+        sqlUpdateUsuario.append(" WHERE id_usuario = ?");
 
-            if (rowsUpdated == 0) {
-                conn.rollback();
-                return false; 
-            }
+        stmtUpdateUsuario = conn.prepareStatement(sqlUpdateUsuario.toString());
+        stmtUpdateUsuario.setString(1, nombre);
+        stmtUpdateUsuario.setString(2, apellidos);
+        stmtUpdateUsuario.setString(3, email);
+        int index = 4;
+        if (hashedPassword != null) {
+            stmtUpdateUsuario.setString(index++, hashedPassword);
+        }
+        stmtUpdateUsuario.setInt(index, idUsuario);
 
-            // Elimina roles anteriores del usuario
-            String sqlDeleteRolesUsuario = "DELETE FROM usuarios_rol WHERE id_usuario = ?";
-            stmtDeleteRolesUsuario = conn.prepareStatement(sqlDeleteRolesUsuario);
-            stmtDeleteRolesUsuario.setInt(1, idUsuario);
-            stmtDeleteRolesUsuario.executeUpdate();
+        int rowsUpdated = stmtUpdateUsuario.executeUpdate();
 
-            // Insertar nuevos roles del usuario
-            if (roles != null) {
-                String sqlInsertRolesUsuario = "INSERT INTO usuarios_rol (id_usuario, id_rol) VALUES (?, (SELECT id_rol FROM roles WHERE nombre_rol = ?))";
-                stmtInsertRolesUsuario = conn.prepareStatement(sqlInsertRolesUsuario);
-                for (String rol : roles) {
-                    stmtInsertRolesUsuario.setInt(1, idUsuario);
-                    stmtInsertRolesUsuario.setString(2, rol);
-                    stmtInsertRolesUsuario.executeUpdate();
-                }
-            }
+        if (rowsUpdated == 0) {
+            conn.rollback();
+            return false; 
+        }
 
-            conn.commit();
-            return true; // Modificación exitosa
-        } catch (SQLException e) {
-            if (conn != null) {
-                conn.rollback();
-            }
-            throw e;
-        } finally {
-         
-            if (stmtUpdateUsuario != null) {
-                stmtUpdateUsuario.close();
-            }
-            if (stmtDeleteRolesUsuario != null) {
-                stmtDeleteRolesUsuario.close();
-            }
-            if (stmtInsertRolesUsuario != null) {
-                stmtInsertRolesUsuario.close();
-            }
-            if (conn != null) {
-                conn.close();
+        // Elimina roles anteriores del usuario
+        String sqlDeleteRolesUsuario = "DELETE FROM usuarios_rol WHERE id_usuario = ?";
+        stmtDeleteRolesUsuario = conn.prepareStatement(sqlDeleteRolesUsuario);
+        stmtDeleteRolesUsuario.setInt(1, idUsuario);
+        stmtDeleteRolesUsuario.executeUpdate();
+
+        // Insertar nuevos roles del usuario
+        if (roles != null) {
+            String sqlInsertRolesUsuario = "INSERT INTO usuarios_rol (id_usuario, id_rol) VALUES (?, (SELECT id_rol FROM roles WHERE nombre_rol = ?))";
+            stmtInsertRolesUsuario = conn.prepareStatement(sqlInsertRolesUsuario);
+            for (String rol : roles) {
+                stmtInsertRolesUsuario.setInt(1, idUsuario);
+                stmtInsertRolesUsuario.setString(2, rol);
+                stmtInsertRolesUsuario.executeUpdate();
             }
         }
+
+        conn.commit();
+        return true;
+    } catch (SQLException e) {
+        if (conn != null) {
+            conn.rollback();
+        }
+        throw e;
+    } finally {
+        if (stmtUpdateUsuario != null) {
+            stmtUpdateUsuario.close();
+        }
+        if (stmtDeleteRolesUsuario != null) {
+            stmtDeleteRolesUsuario.close();
+        }
+        if (stmtInsertRolesUsuario != null) {
+            stmtInsertRolesUsuario.close();
+        }
+        if (conn != null) {
+            conn.close();
+        }
     }
+}
+
+private String hashPassword(String password) {
+    try {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] hashedBytes = md.digest(password.getBytes());
+        return Base64.getEncoder().encodeToString(hashedBytes);
+    } catch (NoSuchAlgorithmException e) {
+        e.printStackTrace();
+        return null;
+    }
+}
+
+
 }

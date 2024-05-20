@@ -41,7 +41,10 @@
                                     <td><input type="text" name="nombre" value="${usuario.nombre}" required /></td>
                                     <td><input type="text" name="apellidos" value="${usuario.apellidos}" required /></td>
                                     <td><input type="email" name="email" value="${usuario.email}" required /></td>
-                                    <td><input type="password" name="password" value="********" required /></td>
+                                    <td>
+                                        <input type="password" name="password" placeholder="********" />
+                                        <input type="hidden" name="currentPassword" value="${usuario.password}" />
+                                    </td>
                                     <td>
                                         <c:forEach var="rol" items="${usuario.roles}">
                                             <input type="checkbox" name="roles" value="${rol}" 

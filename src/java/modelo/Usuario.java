@@ -9,6 +9,7 @@ public class Usuario {
     private String nombre;
     private String apellidos;
     private String email;
+    private String password;
     private List<String> roles;
 
     public Usuario(int id, String nombre, String apellidos, String email) {
@@ -28,6 +29,20 @@ public class Usuario {
         this.apellidos = apellidos;
         this.email = email;
         this.roles = roles;
+    }
+
+    public Usuario(int id, String nombre, String apellidos, String email, String password, List<String> roles) {
+        this.id = id;
+        this.nombre = nombre;
+        this.apellidos = apellidos;
+        this.email = email;
+        this.password = password;
+        this.roles = roles;
+    }
+    
+
+    public String getPassword() {
+        return password;
     }
 
  

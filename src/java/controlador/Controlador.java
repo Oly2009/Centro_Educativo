@@ -171,17 +171,21 @@ case "BajaUsuarios":
     break;
     
   case "ModificarUsuario":
-      //recoger los datos del formulario
-                    if (request.getParameter("idUsuario") != null) {
-                        int idUsuario = Integer.parseInt(request.getParameter("idUsuario"));
-                       nombre = request.getParameter("nombre");
-                      apellidos = request.getParameter("apellidos");
-                        String emailMod = request.getParameter("email");
-                        String passwordMod = request.getParameter("password");
-                        String[] rolesMod = request.getParameterValues("roles");
+    if (request.getParameter("idUsuario") != null) {
+        int idUsuario = Integer.parseInt(request.getParameter("idUsuario"));
+        nombre = request.getParameter("nombre");
+         apellidos = request.getParameter("apellidos");
+        String emailMod = request.getParameter("email");
+        String passwordMod = request.getParameter("password");
+        String currentPassword = request.getParameter("currentPassword");
+        String[] rolesMod = request.getParameterValues("roles");
 
-                 try {
-                     //procedemos a la modificacion
+        // Si no se proporciona una nueva contraseña, usar la actual
+        if (passwordMod == null || passwordMod.isEmpty()) {
+            passwordMod = currentPassword;
+        }
+
+        try {
             boolean modificacionExitosa = usuarioDAO.modificarUsuario(idUsuario, nombre, apellidos, emailMod, passwordMod, rolesMod);
             if (modificacionExitosa) {
                 request.getSession().setAttribute("mensaje", "Usuario modificado exitosamente.");
@@ -191,22 +195,24 @@ case "BajaUsuarios":
         } catch (SQLException e) {
             request.getSession().setAttribute("mensaje", "Error al procesar la solicitud: " + e.getMessage());
         }
-                 //si es exitoso me recarga el metodo 
         response.sendRedirect("Controlador?submit=ModificarUsuario");
         return; 
     }
-//lista los usuarios 
-    List<Usuario> usuariosModificar = usuarioDAO.listarUsuariosConRoles();
-    request.setAttribute("usuarios", usuariosModificar);
-    String mensaje = (String) request.getSession().getAttribute("mensaje");
-    if (mensaje != null) {
-        request.setAttribute("mensaje", mensaje);
-        request.getSession().removeAttribute("mensaje");
-    }
-    //redirige a la pagina de modificacion 
-    RequestDispatcher dispatcher = request.getRequestDispatcher("modificar.jsp");
-    dispatcher.forward(request, response);
-    break;
+// lista los usuarios 
+List<Usuario> usuariosModificar = usuarioDAO.listarUsuariosConRoles();
+request.setAttribute("usuarios", usuariosModificar);
+String mensaje = (String) request.getSession().getAttribute("mensaje");
+if (mensaje != null) {
+    request.setAttribute("mensaje", mensaje);
+    request.getSession().removeAttribute("mensaje");
+}
+// redirige a la pagina de modificacion 
+RequestDispatcher dispatcher = request.getRequestDispatcher("modificar.jsp");
+dispatcher.forward(request, response);
+break;
+
+
+        
 
     
  case "ListarEquipos":
